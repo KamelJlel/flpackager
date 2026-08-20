@@ -4,11 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "flpackager"
-version = "0.1.0"
+version = "0.1.1"
 description = "Package an FL Studio project with its samples so it opens on any machine"
 readme = "README.md"
 requires-python = ">=3.8"
-dependencies = ["pyflp>=2.2.0", "customtkinter>=5.2.0", "tkinterdnd2>=0.4.0"]
+dependencies = ["pyflp>=2.2.0", "customtkinter>=5.2.0", "tkinterdnd2>=0.4.0", "Pillow>=9.0.0"]
 
 [project.scripts]
 flpackager = "flpackager.cli:main"

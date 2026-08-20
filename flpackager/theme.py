@@ -26,6 +26,8 @@ TEXT_DIM = "#6a6b71"
 # flat, so the solid orange stands in for it.
 ACCENT = "#ff8a1e"
 ACCENT_HOVER = "#ffa04a"
+# Dark ink used for text/glyphs that sit on top of the orange accent.
+ACCENT_INK = "#1c1206"
 
 # --- status ----------------------------------------------------------------
 GREEN = "#69cf5c"

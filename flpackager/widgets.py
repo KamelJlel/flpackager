@@ -75,8 +75,13 @@ def badge(master, letter: str, *, size: int = 34, color: str = T.ACCENT,
     )
 
 
-def ghost_button(master, text: str, command: Callable[[], None], *, width: int = 0) -> ctk.CTkButton:
-    """Neutral secondary button -- grey, bordered, never accent-coloured."""
+def ghost_button(master, text: str, command: Callable[[], None], *,
+                 width: int = 0, icon: str = "") -> ctk.CTkButton:
+    """Neutral secondary button -- grey, bordered, never accent-coloured.
+
+    Pass ``icon`` (an MDL2 name from :mod:`.icons`) for a leading glyph.
+    """
+    image = _icon(icon, T.TEXT) if icon else None
     return ctk.CTkButton(
         master,
         text=text,
@@ -90,11 +95,14 @@ def ghost_button(master, text: str, command: Callable[[], None], *, width: int =
         text_color=T.TEXT,
         border_width=1,
         border_color=T.BORDER,
+        image=image,
+        compound="left",
     )
 
 
-def accent_button(master, text: str, command: Callable[[], None]) -> ctk.CTkButton:
+def accent_button(master, text: str, command: Callable[[], None], *, icon: str = "upload") -> ctk.CTkButton:
     """The one loud control on screen: Package & Send."""
+    image = _icon(icon, T.ACCENT_INK) if icon else None
     return ctk.CTkButton(
         master,
         text=text,
@@ -104,8 +112,19 @@ def accent_button(master, text: str, command: Callable[[], None]) -> ctk.CTkButt
         corner_radius=8,
         fg_color=T.ACCENT,
         hover_color=T.ACCENT_HOVER,
-        text_color="#20150a",
+        text_color=T.ACCENT_INK,
+        image=image,
+        compound="left",
     )
+
+
+def _icon(name: str, color: str):
+    """Lazy bridge to :mod:`.icons` so widgets.py has no hard import cycle."""
+    try:
+        from . import icons
+        return icons.icon(name, 16, color)
+    except Exception:
+        return None
 
 
 def bind_hover(frame: ctk.CTkFrame, normal: str, hover: str,

@@ -33,6 +33,7 @@ import customtkinter as ctk
 
 from . import __version__, core, theme as T
 from . import widgets as W
+from . import icons as I
 
 APP_NAME = "flpackager"
 CONFIG_PATH = os.path.join(os.path.expanduser("~"), ".flpackager-gui.json")
@@ -126,10 +127,11 @@ class LibraryView(ctk.CTkFrame):
     """Folder of projects, one row each: name, BPM, key, samples, status."""
 
     def __init__(self, master, *, on_open, on_change_folder, on_open_package,
-                 on_open_file):
+                 on_open_file, on_search=None):
         super().__init__(master, fg_color=T.BG_MAIN, corner_radius=0)
         self.on_open = on_open
         self.on_change_folder = on_change_folder
+        self.on_search = on_search
         self.rows: List[ctk.CTkFrame] = []
         self.row_paths: List[str] = []
         self.cells: dict = {}
@@ -162,15 +164,26 @@ class LibraryView(ctk.CTkFrame):
         )
         self.folder_label.pack(side="left", padx=(8, 0))
 
-        W.ghost_button(controls, "Change folder", on_change_folder).pack(
+        W.ghost_button(controls, "Change folder", on_change_folder, icon="folder").pack(
             side="left", padx=(10, 0)
         )
         # Keeps the old click-to-browse route alive: a project doesn't have to
         # live in the library folder to be packaged.
-        W.ghost_button(controls, "Open .flp...", on_open_file).pack(side="left", padx=(8, 0))
-        W.ghost_button(controls, "Open a package...", on_open_package).pack(
+        W.ghost_button(controls, "Open .flp...", on_open_file, icon="openfile").pack(side="left", padx=(8, 0))
+        W.ghost_button(controls, "Open a package...", on_open_package, icon="download").pack(
             side="left", padx=(8, 0)
         )
+
+        # Search: the way to work a big folder without scrolling hundreds of rows.
+        self.search_var = tk.StringVar()
+        self.search = ctk.CTkEntry(
+            controls, textvariable=self.search_var, placeholder_text="Search projects...",
+            font=T.F_SMALL, height=28, width=190, corner_radius=7,
+            fg_color=T.BG_INSET, border_color=T.BORDER, text_color=T.TEXT,
+        )
+        self.search.pack(side="left", padx=(16, 0))
+        if self.on_search is not None:
+            self.search_var.trace_add("write", lambda *_: self.on_search(self.search_var.get()))
 
         self.scan_label = ctk.CTkLabel(
             header, text="", font=T.F_SMALL, text_color=T.TEXT_DIM, height=16, anchor="w"
@@ -227,7 +240,7 @@ class LibraryView(ctk.CTkFrame):
         )
         self.empty_label.pack(anchor="w")
         self.empty_button = W.accent_button(
-            self.empty, "Choose your projects folder", self.on_change_folder
+            self.empty, "Choose your projects folder", self.on_change_folder, icon="folder"
         )
         self.empty_button.pack(anchor="w", pady=(14, 0))
 
@@ -410,8 +423,8 @@ class ProjectView(ctk.CTkFrame):
 
         # --- back link ---
         back = ctk.CTkLabel(
-            self, text="←  Library", font=T.F_SMALL, text_color=T.TEXT_MUTED,
-            cursor="hand2", height=16,
+            self, text=" Library", font=T.F_SMALL, text_color=T.TEXT_MUTED,
+            cursor="hand2", height=16, image=I.icon("back", 14, T.TEXT_MUTED), compound="left",
         )
         back.grid(row=0, column=0, sticky="w", padx=28, pady=(20, 0))
         back.bind("<Button-1>", lambda _e: on_back())
@@ -439,7 +452,7 @@ class ProjectView(ctk.CTkFrame):
 
         right = ctk.CTkFrame(header, fg_color="transparent")
         right.grid(row=0, column=1, sticky="e")
-        self.pack_button = W.accent_button(right, "↑  Package & Send", on_package)
+        self.pack_button = W.accent_button(right, "Package & Send", on_package, icon="upload")
         self.pack_button.configure(state="disabled")
         self.pack_button.pack(anchor="e")
         self.summary = ctk.CTkLabel(
@@ -711,7 +724,10 @@ class ProgressModal(ctk.CTkToplevel):
         body = ctk.CTkFrame(self, fg_color="transparent")
         body.pack(padx=26, pady=24, fill="both", expand=True)
 
-        self.icon = W.badge(body, "↑", size=40, font=(T.UI, 18, "bold"))
+        self.icon = W.badge(body, "", size=40, font=(T.UI, 18, "bold"))
+        _up = I.icon("upload", 20, T.ACCENT_INK)
+        if _up is not None:
+            self.icon.configure(image=_up)
         self.icon.pack(anchor="w")
 
         self.heading = ctk.CTkLabel(
@@ -774,12 +790,12 @@ class ProgressModal(ctk.CTkToplevel):
         self.bar.stop()
         self.bar.configure(mode="determinate", progress_color=T.GREEN)
         self.bar.set(1.0)
-        self.icon.configure(text="✓", fg_color=T.GREEN, text_color="#0f2410")
+        self.icon.configure(text="", image=I.icon("check", 22, "#0f2410"), fg_color=T.GREEN)
         self.heading.configure(text=message)
         self.detail.configure(text=sub)
         self.count.configure(text="")
         W.ghost_button(self.actions, "Close", self._close).pack(side="right")
-        W.ghost_button(self.actions, "Reveal in folder", self.on_reveal).pack(
+        W.ghost_button(self.actions, "Reveal in folder", self.on_reveal, icon="reveal").pack(
             side="right", padx=(0, 8)
         )
 
@@ -788,7 +804,7 @@ class ProgressModal(ctk.CTkToplevel):
         self.bar.stop()
         self.bar.configure(mode="determinate", progress_color=T.RED)
         self.bar.set(1.0)
-        self.icon.configure(text="!", fg_color=T.RED, text_color="#2a0d0c")
+        self.icon.configure(text="", image=I.icon("error", 22, "#2a0d0c"), fg_color=T.RED)
         self.heading.configure(text="Packaging failed")
         self.detail.configure(text=_shorten(message, 64))
         W.ghost_button(self.actions, "Close", self._close).pack(side="right")
@@ -824,6 +840,9 @@ class PackagerApp:
         self.scan_token = 0
         self.scan_results: dict = {}
         self.pending_rows: List[str] = []
+        self.all_paths: List[str] = []      # every .flp found, for search
+        self.search_text = ""
+        self._search_job = None             # debounce handle
         self.analyze_requests: "queue.Queue[str]" = queue.Queue()
         self.requested: set = set()
         self.ticks = 0
@@ -884,9 +903,13 @@ class PackagerApp:
         bar.grid_propagate(False)
         brand = ctk.CTkFrame(bar, fg_color="transparent")
         brand.place(x=16, rely=0.5, anchor="w")
-        W.badge(brand, "F", size=24, font=(T.UI, 13, "bold")).pack(side="left")
+        mark = I.logo(26)
+        if mark is not None:
+            ctk.CTkLabel(brand, text="", image=mark, width=26, height=26).pack(side="left")
+        else:
+            W.badge(brand, "f", size=24, font=(T.UI, 13, "bold")).pack(side="left")
         ctk.CTkLabel(brand, text=APP_NAME, font=T.F_LOGO, text_color=T.TEXT).pack(
-            side="left", padx=(9, 0)
+            side="left", padx=(10, 0)
         )
         ctk.CTkLabel(
             bar, text="v%s" % __version__, font=T.F_TINY, text_color=T.TEXT_DIM
@@ -919,6 +942,7 @@ class PackagerApp:
             on_change_folder=self.choose_library_folder,
             on_open_package=self.open_unpack_window,
             on_open_file=self.choose_project,
+            on_search=self.on_search,
         )
         self.library.set_folder(self.library_dir)
         self.project = ProjectView(
@@ -992,21 +1016,27 @@ class PackagerApp:
 
         ctk.CTkFrame(side, fg_color="transparent").grid(row=1, column=0, sticky="nsew")
 
-        chip = ctk.CTkFrame(side, fg_color=T.BG_CARD, corner_radius=9, height=44, width=166)
+        # Quiet brand + version footer, in place of the old (pointless) username
+        # chip. Uses the real logo mark.
+        chip = ctk.CTkFrame(side, fg_color="transparent", height=40, width=166)
         chip.grid(row=2, column=0, sticky="ew", padx=12, pady=14)
         chip.pack_propagate(False)
-        W.badge(
-            chip, "U", size=24, color=T.BG_INSET, text_color=T.TEXT_MUTED,
-            font=(T.UI, 11, "bold"),
-        ).pack(side="left", padx=(9, 0), pady=10)
-        who = ctk.CTkFrame(chip, fg_color="transparent")
-        who.pack(side="left", padx=(9, 0))
+        mark = I.logo(22)
+        if mark is not None:
+            ctk.CTkLabel(chip, text="", image=mark, width=22, height=22).pack(
+                side="left", padx=(4, 0)
+            )
+        else:
+            W.badge(chip, "f", size=22, font=(T.UI, 12, "bold")).pack(side="left", padx=(4, 0))
+        meta = ctk.CTkFrame(chip, fg_color="transparent")
+        meta.pack(side="left", padx=(10, 0))
         ctk.CTkLabel(
-            who, text=os.environ.get("USERNAME") or os.environ.get("USER") or "You",
-            font=T.F_SMALL, text_color=T.TEXT, anchor="w", height=15,
+            meta, text="flpackager", font=(T.UI, 12, "bold"), text_color=T.TEXT,
+            anchor="w", height=15,
         ).pack(anchor="w")
         ctk.CTkLabel(
-            who, text="local", font=T.F_TINY, text_color=T.TEXT_DIM, anchor="w", height=13
+            meta, text="v%s" % __version__, font=T.F_TINY, text_color=T.TEXT_DIM,
+            anchor="w", height=13,
         ).pack(anchor="w")
 
     def _enable_dnd(self) -> None:
@@ -1037,6 +1067,62 @@ class PackagerApp:
     def show_project(self) -> None:
         self.library.grid_forget()
         self.project.grid(row=0, column=0, sticky="nsew")
+
+    # -- search / row population -------------------------------------------
+
+    def on_search(self, text: str) -> None:
+        """Debounced: re-render the list filtered by project name."""
+        self.search_text = text
+        if getattr(self, "_suppress_search", False):
+            return  # programmatic reset (e.g. new folder scan), not a user query
+        if self._search_job is not None:
+            try:
+                self.root.after_cancel(self._search_job)
+            except Exception:
+                pass
+        self._search_job = self.root.after(180, self._populate_rows)
+
+    def _populate_rows(self) -> None:
+        """Rebuild the visible rows from the full list, honouring the search.
+
+        Filtering the source list (rather than rendering all of it) is what
+        keeps a 500-project folder responsive: type a few letters and only the
+        matching rows are ever built.
+        """
+        self._search_job = None
+        self.library.clear()
+        self.requested = set()
+
+        query = self.search_text.strip().lower()
+        if query:
+            paths = [
+                p for p in self.all_paths
+                if query in os.path.splitext(os.path.basename(p))[0].lower()
+            ]
+        else:
+            paths = self.all_paths
+
+        self.pending_rows = list(paths[:MAX_LIBRARY_ROWS])
+        total = len(self.all_paths)
+
+        if not total:
+            self.library.set_scan_status("")
+            self.library.show_empty(
+                "No .flp files in this folder.\n"
+                "Use “Change folder” to point flpackager at where you keep your projects."
+            )
+        elif not paths:
+            self.library.set_scan_status('No projects match “%s”.' % self.search_text.strip())
+        elif query:
+            shown = min(len(paths), MAX_LIBRARY_ROWS)
+            status = "%d of %d" % (shown, total) if len(paths) <= MAX_LIBRARY_ROWS \
+                else "%d of %d matches · showing %d" % (len(paths), total, MAX_LIBRARY_ROWS)
+            self.library.set_scan_status(status)
+        else:
+            found = "%d project%s" % (total, "" if total == 1 else "s")
+            if total > MAX_LIBRARY_ROWS:
+                found += " · showing the %d most recent · search to find the rest" % MAX_LIBRARY_ROWS
+            self.library.set_scan_status(found)
 
     # -- sidebar ------------------------------------------------------------
 
@@ -1096,6 +1182,13 @@ class PackagerApp:
         token = self.scan_token
         self.scan_results = {}
         self.pending_rows = []
+        self.all_paths = []
+        self.search_text = ""
+        try:
+            self._suppress_search = True
+            self.library.search_var.set("")
+        finally:
+            self._suppress_search = False
         self.requested = set()
         self.analyze_requests = queue.Queue()
         self.library.clear()
@@ -1315,19 +1408,8 @@ class PackagerApp:
                     _, token, paths = event
                     if token != self.scan_token:
                         continue
-                    self.pending_rows = list(paths[:MAX_LIBRARY_ROWS])
-                    if paths:
-                        found = "%d project%s" % (len(paths), "" if len(paths) == 1 else "s")
-                        if len(paths) > MAX_LIBRARY_ROWS:
-                            found += " · showing the %d most recent" % MAX_LIBRARY_ROWS
-                        self.library.set_scan_status(found)
-                    else:
-                        self.library.set_scan_status("")
-                        self.library.show_empty(
-                            "No .flp files in this folder.\n"
-                            "Use “Change folder” to point flpackager at where you "
-                            "keep your projects."
-                        )
+                    self.all_paths = list(paths)
+                    self._populate_rows()
 
                 elif kind == "scan_meta":
                     _, token, path, analysis, error = event
@@ -1371,7 +1453,13 @@ class PackagerApp:
         # Rows are cheap to make but not free; a bounded batch per tick keeps
         # a 500-project folder from locking the window while it populates.
         while self.pending_rows and rows_added < ROWS_PER_TICK:
-            self.library.add_row(self.pending_rows.pop(0))
+            path = self.pending_rows.pop(0)
+            self.library.add_row(path)
+            # On a re-render (e.g. after a search) the analysis is already
+            # cached, so fill the row now instead of waiting for a re-read.
+            cached = self.scan_results.get(path)
+            if cached is not None:
+                self.library.update_row(path, cached)
             rows_added += 1
 
         # Twice a second, top up the read queue with whatever is on screen.
@@ -1405,10 +1493,14 @@ class UnpackWindow:
 
         head = ctk.CTkFrame(frame, fg_color="transparent")
         head.grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 16))
-        W.badge(
-            head, "↓", size=32, color=T.BG_CARD, text_color=T.TEXT_MUTED,
+        _dl_badge = W.badge(
+            head, "", size=32, color=T.BG_CARD, text_color=T.TEXT_MUTED,
             font=(T.UI, 15, "bold"),
-        ).pack(side="left")
+        )
+        _dl = I.icon("download", 17, T.TEXT_MUTED)
+        if _dl is not None:
+            _dl_badge.configure(image=_dl)
+        _dl_badge.pack(side="left")
         ctk.CTkLabel(head, text="Open a package", font=T.F_H2, text_color=T.TEXT).pack(
             side="left", padx=(11, 0)
         )
@@ -1434,7 +1526,7 @@ class UnpackWindow:
         actions = ctk.CTkFrame(frame, fg_color="transparent")
         actions.grid(row=5, column=0, columnspan=3, sticky="ew", pady=(14, 0))
         actions.columnconfigure(0, weight=1)
-        self.reveal = W.ghost_button(actions, "Show me the folder", self.reveal_folder)
+        self.reveal = W.ghost_button(actions, "Show me the folder", self.reveal_folder, icon="reveal")
         self.reveal.configure(state="disabled")
         self.reveal.grid(row=0, column=1, padx=(0, 8))
         # Neutral, not accent: the orange is reserved for the logo, the active
@@ -1571,7 +1663,11 @@ class SettingsWindow:
 
         head = ctk.CTkFrame(frame, fg_color="transparent")
         head.grid(row=0, column=0, columnspan=3, sticky="w", pady=(0, 16))
-        W.badge(head, "F", size=30, font=(T.UI, 14, "bold")).pack(side="left")
+        _lg = I.logo(30)
+        if _lg is not None:
+            ctk.CTkLabel(head, text="", image=_lg, width=30, height=30).pack(side="left")
+        else:
+            W.badge(head, "f", size=30, font=(T.UI, 14, "bold")).pack(side="left")
         titles = ctk.CTkFrame(head, fg_color="transparent")
         titles.pack(side="left", padx=(11, 0))
         ctk.CTkLabel(titles, text="Settings", font=T.F_H2, text_color=T.TEXT).pack(anchor="w")
@@ -1661,7 +1757,11 @@ class WelcomeModal(ctk.CTkToplevel):
         # --- header ---
         head = ctk.CTkFrame(body, fg_color="transparent")
         head.pack(anchor="w")
-        W.badge(head, "F", size=40, font=(T.UI, 18, "bold")).pack(side="left")
+        _lg = I.logo(40)
+        if _lg is not None:
+            ctk.CTkLabel(head, text="", image=_lg, width=40, height=40).pack(side="left")
+        else:
+            W.badge(head, "f", size=40, font=(T.UI, 18, "bold")).pack(side="left")
         titles = ctk.CTkFrame(head, fg_color="transparent")
         titles.pack(side="left", padx=(13, 0))
         ctk.CTkLabel(
@@ -1695,7 +1795,7 @@ class WelcomeModal(ctk.CTkToplevel):
         actions = ctk.CTkFrame(body, fg_color="transparent")
         actions.pack(fill="x", pady=(22, 0))
         W.ghost_button(actions, "I'll look around first", self._close).pack(side="right")
-        W.accent_button(actions, "Choose my projects folder", self._choose).pack(
+        W.accent_button(actions, "Choose my projects folder", self._choose, icon="folder").pack(
             side="right", padx=(0, 10)
         )
 
@@ -1793,6 +1893,7 @@ def main(argv=None) -> int:
     except Exception:
         pass
 
+    I.set_window_icon(root)  # real logo in the title bar / taskbar
     PackagerApp(root, initial_file=initial)
     root.mainloop()
     return 0
