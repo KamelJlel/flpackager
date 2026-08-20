@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>flpackager — send an FL Studio project that just opens</title>
+<meta name="description" content="flpackager bundles an FL Studio project with its samples so it opens cleanly on anyone else's machine. Free Windows app.">
+<meta property="og:title" content="flpackager">
+<meta property="og:description" content="Send an FL Studio project that just opens — samples and all.">
+<style>
+  :root{
+    --bg:#1f2024; --bg-title:#141518; --card:#292b31; --card-hover:#33353c;
+    --inset:#1a1b1e; --border:#34363d;
+    --text:#e9e9ec; --muted:#9b9ca2; --dim:#6a6b71;
+    --accent:#ff8a1e; --accent2:#ff5c39; --accent-hover:#ffa04a;
+    --green:#69cf5c; --blue:#4aa3ff; --red:#ff5f57; --amber:#d9a441;
+    --mono:"Consolas",ui-monospace,SFMono-Regular,Menlo,monospace;
+    --ui:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:var(--ui); background:var(--bg); color:var(--text);
+    line-height:1.6; -webkit-font-smoothing:antialiased;
+    background-image:radial-gradient(1200px 600px at 80% -10%, rgba(255,138,30,.10), transparent 60%),
+                     radial-gradient(900px 500px at -10% 10%, rgba(74,163,255,.06), transparent 55%);
+  }
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+
+  /* top bar */
+  header{position:sticky;top:0;z-index:20;background:rgba(20,21,24,.82);
+    backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
+  .bar{display:flex;align-items:center;gap:12px;height:58px}
+  .badge{display:inline-flex;align-items:center;justify-content:center;
+    font-weight:800;color:#20150a;border-radius:8px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .logo .badge{width:30px;height:30px;font-size:15px}
+  .logo{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.2px}
+  .bar .spacer{flex:1}
+  .bar nav a{color:var(--muted);font-size:14px;padding:8px 10px;border-radius:7px}
+  .bar nav a:hover{color:var(--text);background:var(--card)}
+  @media(max-width:640px){.bar nav a.hide-sm{display:none}}
+
+  /* hero */
+  .hero{display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center;
+    padding:76px 0 64px}
+  @media(max-width:900px){.hero{grid-template-columns:1fr;gap:40px;padding:52px 0 40px}}
+  .eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;
+    color:var(--accent);font-weight:700;text-transform:uppercase;letter-spacing:.10em;
+    background:rgba(255,138,30,.10);border:1px solid rgba(255,138,30,.24);
+    padding:5px 11px;border-radius:999px;margin-bottom:20px}
+  h1{font-size:52px;line-height:1.06;letter-spacing:-.02em;font-weight:800}
+  @media(max-width:640px){h1{font-size:38px}}
+  h1 .grad{background:linear-gradient(120deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .lede{color:var(--muted);font-size:18px;margin-top:18px;max-width:30em}
+  .cta{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:30px}
+  .btn{display:inline-flex;align-items:center;gap:10px;font-weight:700;font-size:16px;
+    padding:14px 24px;border-radius:11px;border:1px solid transparent;cursor:pointer}
+  .btn-primary{color:#20150a;background:linear-gradient(135deg,var(--accent),var(--accent2));
+    box-shadow:0 10px 30px rgba(255,92,57,.30)}
+  .btn-primary:hover{filter:brightness(1.05);transform:translateY(-1px)}
+  .btn-ghost{color:var(--text);background:var(--card);border-color:var(--border)}
+  .btn-ghost:hover{background:var(--card-hover)}
+  .meta{color:var(--dim);font-size:13.5px;margin-top:14px}
+  .meta b{color:var(--muted);font-weight:600}
+
+  /* app mockup */
+  .mock{background:var(--bg-title);border:1px solid var(--border);border-radius:14px;
+    overflow:hidden;box-shadow:0 30px 70px rgba(0,0,0,.45)}
+  .mock .tbar{display:flex;align-items:center;gap:9px;height:42px;padding:0 14px;
+    background:var(--bg-title);border-bottom:1px solid var(--border);font-size:13px}
+  .mock .tbar .badge{width:22px;height:22px;font-size:12px;border-radius:6px}
+  .mock .tbar .v{margin-left:auto;color:var(--dim);font-size:11px;font-family:var(--mono)}
+  .mock .body{display:grid;grid-template-columns:150px 1fr}
+  .side{background:#17181b;padding:14px 10px;border-right:1px solid var(--border);min-height:300px}
+  .nav-i{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--dim);
+    padding:8px 10px;border-radius:7px;margin-bottom:2px}
+  .nav-i.active{color:var(--text);background:var(--card);
+    box-shadow:inset 3px 0 0 var(--accent)}
+  .main{padding:18px 18px 22px}
+  .main h3{font-size:19px;margin-bottom:14px}
+  .colhead{display:grid;grid-template-columns:1fr 52px 92px 74px;gap:8px;
+    font-size:10px;color:var(--dim);letter-spacing:.08em;padding:0 12px 8px}
+  .row{display:grid;grid-template-columns:1fr 52px 92px 74px;gap:8px;align-items:center;
+    background:var(--card);border-radius:10px;padding:11px 12px;margin-bottom:7px}
+  .row .nm{font-weight:700;font-size:13.5px}
+  .row .sub{color:var(--dim);font-size:11px;font-weight:400}
+  .row .num{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+  .pill{justify-self:start;font-size:11px;font-weight:600;padding:3px 9px;border-radius:8px}
+  .pill.green{color:var(--green);background:rgba(105,207,92,.14)}
+  .pill.amber{color:var(--amber);background:rgba(217,164,65,.14)}
+  .pill.ready{color:var(--muted)}
+
+  /* sections */
+  section{padding:60px 0}
+  .sec-head{text-align:center;max-width:34em;margin:0 auto 44px}
+  .sec-head h2{font-size:32px;letter-spacing:-.01em}
+  .sec-head p{color:var(--muted);margin-top:12px;font-size:17px}
+  .kicker{color:var(--accent);font-weight:700;font-size:13px;letter-spacing:.09em;
+    text-transform:uppercase;margin-bottom:10px}
+
+  .problem{background:var(--inset);border:1px solid var(--border);border-radius:16px;
+    padding:34px 34px;display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:center}
+  @media(max-width:640px){.problem{grid-template-columns:1fr;padding:26px}}
+  .problem .mark{font-size:40px;line-height:1}
+  .problem h3{font-size:20px;margin-bottom:6px}
+  .problem p{color:var(--muted)}
+  .problem code{font-family:var(--mono);font-size:.92em;color:var(--amber);
+    background:rgba(217,164,65,.10);padding:1px 6px;border-radius:5px}
+
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+  @media(max-width:820px){.steps{grid-template-columns:1fr}}
+  .step{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px}
+  .step .n{width:34px;height:34px;border-radius:9px;background:var(--inset);
+    color:var(--accent);font-weight:800;display:flex;align-items:center;justify-content:center;
+    font-family:var(--mono);margin-bottom:14px}
+  .step h3{font-size:17px;margin-bottom:7px}
+  .step p{color:var(--muted);font-size:14.5px}
+
+  /* install */
+  .install{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:34px}
+  .install ol{list-style:none;counter-reset:s;display:grid;gap:16px;margin-top:6px}
+  .install li{counter-increment:s;display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:start}
+  .install li::before{content:counter(s);width:30px;height:30px;border-radius:8px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));color:#20150a;
+    font-weight:800;display:flex;align-items:center;justify-content:center;font-size:14px}
+  .install li b{color:var(--text)}
+  .install li span{color:var(--muted);font-size:15px}
+  .warn{margin-top:22px;background:rgba(217,164,65,.08);border:1px solid rgba(217,164,65,.28);
+    border-radius:11px;padding:14px 16px;color:var(--muted);font-size:14px}
+  .warn b{color:var(--amber)}
+  .kbd{font-family:var(--ui);font-weight:600;color:var(--text);background:var(--inset);
+    border:1px solid var(--border);border-bottom-width:2px;border-radius:6px;padding:1px 8px;font-size:.92em}
+
+  .center-cta{text-align:center;padding:8px 0 4px}
+
+  footer{border-top:1px solid var(--border);padding:34px 0 48px;color:var(--dim);font-size:14px}
+  .foot{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+  footer a{color:var(--muted)} footer a:hover{color:var(--text)}
+  .disclaimer{margin-top:14px;font-size:12.5px;color:var(--dim);max-width:60em}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap bar">
+    <a class="logo" href="#top"><span class="badge">F</span> flpackager</a>
+    <div class="spacer"></div>
+    <nav>
+      <a class="hide-sm" href="#how">How it works</a>
+      <a class="hide-sm" href="#install">Install</a>
+      <a href="https://github.com/KamelJlel/flpackager" target="_blank" rel="noopener">GitHub</a>
+      <a href="#download">Download</a>
+    </nav>
+  </div>
+</header>
+
+<a id="top"></a>
+<div class="wrap">
+
+  <!-- HERO -->
+  <section class="hero" style="padding-top:64px">
+    <div>
+      <span class="eyebrow">Free · Windows · early test build</span>
+      <h1>Send an FL Studio project that <span class="grad">just opens.</span></h1>
+      <p class="lede">FL Studio saves sample paths from <em>your</em> machine, so a bare
+        <code>.flp</code> lands on a collaborator with a wall of missing-audio errors.
+        flpackager bundles the project with its samples and rewrites the paths — so it
+        opens clean, everywhere.</p>
+      <div class="cta">
+        <a class="btn btn-primary" id="download"
+           href="https://github.com/KamelJlel/flpackager/releases/latest/download/flpackager.exe">
+          ↓ Download for Windows
+        </a>
+        <a class="btn btn-ghost" href="#install">How to install</a>
+      </div>
+      <div class="meta"><b>flpackager.exe</b> · ~12 MB · no installer, no Python · double-click to run</div>
+    </div>
+
+    <!-- app mockup -->
+    <div class="mock" aria-hidden="true">
+      <div class="tbar"><span class="badge">F</span> flpackager <span class="v">v0.1.0</span></div>
+      <div class="body">
+        <div class="side">
+          <div class="nav-i active">Library</div>
+          <div class="nav-i">Incoming</div>
+          <div class="nav-i">Settings</div>
+        </div>
+        <div class="main">
+          <h3>Library</h3>
+          <div class="colhead"><span>PROJECT</span><span>BPM</span><span>KEY</span><span>STATUS</span></div>
+          <div class="row">
+            <div><div class="nm">night drive</div><div class="sub">edited 20 hours ago</div></div>
+            <div class="num">142</div><div class="num">G# min</div>
+            <span class="pill amber">2 missing</span>
+          </div>
+          <div class="row">
+            <div><div class="nm">clean one</div><div class="sub">edited 2 days ago</div></div>
+            <div class="num">90</div><div class="num">F maj</div>
+            <span class="pill ready">Ready</span>
+          </div>
+          <div class="row">
+            <div><div class="nm">feerer</div><div class="sub">edited 4 days ago</div></div>
+            <div class="num">127</div><div class="num">A min</div>
+            <span class="pill green">Ready</span>
+          </div>
+          <div class="row">
+            <div><div class="nm">scaryahh</div><div class="sub">edited last week</div></div>
+            <div class="num">139</div><div class="num">C min</div>
+            <span class="pill green">Ready</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- PROBLEM -->
+<div class="wrap">
+  <section style="padding-top:20px">
+    <div class="problem">
+      <div class="mark">🎛️</div>
+      <div>
+        <h3>Why a bare .flp breaks on someone else's PC</h3>
+        <p>Your project points at samples like <code>C:\Users\you\Music\Kicks\kick.wav</code>.
+          Those folders don't exist on your collaborator's machine, so FL opens the project
+          with empty channels and missing-audio warnings. flpackager collects every sample,
+          repoints the project at the bundled copies, and writes a <code>manifest.txt</code>
+          listing anything it couldn't find (plus the plugins they'll need installed).</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- HOW IT WORKS -->
+<div class="wrap">
+  <section id="how">
+    <div class="sec-head">
+      <div class="kicker">How it works</div>
+      <h2>Three steps, one .zip</h2>
+      <p>Open flpackager, and it walks you through it the first time.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="n">1</div>
+        <h3>Point it at your projects</h3>
+        <p>Pick the folder where you keep your <code>.flp</code> files. flpackager lists them
+          with BPM, key, and how many samples each one needs.</p>
+      </div>
+      <div class="step">
+        <div class="n">2</div>
+        <h3>Check it before you send</h3>
+        <p>Every sample reads as <b style="color:var(--green)">Bundled</b>,
+          <b style="color:var(--blue)">Built-in</b>, or <b style="color:var(--red)">Missing</b> —
+          so you know it'll open cleanly on the other end.</p>
+      </div>
+      <div class="step">
+        <div class="n">3</div>
+        <h3>Package &amp; Send</h3>
+        <p>One button bundles the project, its samples, and a manifest into a single
+          <code>.zip</code>. Send it however you like — the receiver opens it in flpackager too.</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- INSTALL -->
+<div class="wrap">
+  <section id="install">
+    <div class="sec-head">
+      <div class="kicker">Install</div>
+      <h2>How to run it</h2>
+      <p>It's a single portable app — there's nothing to install, just run.</p>
+    </div>
+    <div class="install">
+      <ol>
+        <li><span><b>Download</b> the button above — you'll get <b>flpackager.exe</b>.</span></li>
+        <li><span><b>Double-click it.</b> Windows may show a blue
+          <b>“Windows protected your PC”</b> box. That's normal for a new app that isn't
+          code-signed yet — it doesn't mean anything's wrong.</span></li>
+        <li><span>Click <span class="kbd">More info</span>, then <span class="kbd">Run anyway</span>.</span></li>
+        <li><span>flpackager opens and greets you. Keep the file wherever you like — Desktop is
+          fine; right-click → <b>Pin to taskbar</b> to keep it handy.</span></li>
+      </ol>
+      <div class="warn"><b>About that warning:</b> it appears because this is an early build
+        without a paid code-signing certificate — not because the app is unsafe. The full
+        source is on <a href="https://github.com/KamelJlel/flpackager" target="_blank" rel="noopener">GitHub</a>
+        if you want to read or build it yourself.</div>
+    </div>
+    <div class="center-cta" style="margin-top:34px">
+      <a class="btn btn-primary" href="https://github.com/KamelJlel/flpackager/releases/latest/download/flpackager.exe">
+        ↓ Download flpackager for Windows
+      </a>
+    </div>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="foot">
+      <div><span class="badge" style="width:22px;height:22px;font-size:12px;border-radius:6px;display:inline-flex;vertical-align:middle">F</span>
+        &nbsp;flpackager · v0.1.0</div>
+      <div>
+        <a href="https://github.com/KamelJlel/flpackager" target="_blank" rel="noopener">Source on GitHub</a>
+        &nbsp;·&nbsp;
+        <a href="https://github.com/KamelJlel/flpackager/issues" target="_blank" rel="noopener">Report a bug / feedback</a>
+      </div>
+    </div>
+    <p class="disclaimer">flpackager is an independent tool and is not affiliated with, endorsed by,
+      or associated with Image-Line or FL Studio. FL Studio is a trademark of Image-Line.
+      This is an early test release — please send feedback through the Issues tab.</p>
+  </div>
+</footer>
+
+</body>
+</html>
